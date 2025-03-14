@@ -21,6 +21,7 @@
     "dotenv": "^16.4.7",
     "ethers": "^5.7.2",
     "ethers-multicall": "^0.2.3",
+    "flatted": "^3.3.3",
     "http": "npm:http-browserify",
     "http-browserify": "latest",
     "https": "npm:https-browserify",
@@ -79,7 +80,7 @@
     ]
   },
   "devDependencies": {
-    "web-vitals": "^4.2.3",
-    "babel-preset-react-app": "@babel/plugin-proposal-private-property-in-object"
+    "babel-preset-react-app": "@babel/plugin-proposal-private-property-in-object",
+    "web-vitals": "^4.2.3"
   }
 }

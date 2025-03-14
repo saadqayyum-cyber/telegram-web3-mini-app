@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ethers } from "ethers";
 import { abi } from "./abis/abi";
 import { useWallet } from "@thirdweb-dev/react";
+import { stringify } from "flatted";
 
 function MintBox() {
   const auth = useWallet();
@@ -19,21 +20,24 @@ function MintBox() {
       setLogs([]); // Clear previous logs
       addLog("Starting Mint process...");
 
-      const signer = await auth.getSigner();
-      addLog("Signer", signer);
+      const thirdwebSigner = await auth.getSigner();
 
-      if (!signer) {
-        addLog("Signer not found. Connect your wallet first!", true);
-        setLoading(false);
-        return;
-      }
+      addLog(`ThirdWeb signer obtained with address: ${await thirdwebSigner.getAddress()}`);
 
-      const address = await signer.getAddress();
-      addLog("Signer Address", address);
+      addLog("Getting provider from ThirdWeb signer...");
+      const provider = thirdwebSigner.provider;
+
+      addLog("Creating ethers signer from provider...");
+      const ethersSigner = provider.getSigner();
+
+      addLog(`Ethers signer created with address: ${await ethersSigner.getAddress()}`);
+
+      const address = await ethersSigner.getAddress();
+      addLog(`Signer Address: ${address}`);
 
       addLog(`Using address: ${address}`);
 
-      const contract = new ethers.Contract(contractAddress, abi, signer);
+      const contract = new ethers.Contract(contractAddress, abi, ethersSigner);
       const amount = ethers.utils.parseUnits("1", 18);
       const tx = await contract.mint(address, amount);
 
@@ -76,7 +80,7 @@ function MintBox() {
           textAlign: "center",
         }}
       >
-        {loading && (
+        {/* {loading && (
           <div
             style={{
               position: "absolute",
@@ -91,7 +95,7 @@ function MintBox() {
           >
             <span>Loading...</span>
           </div>
-        )}
+        )} */}
         <h4>Logs:</h4>
         {logs.map((log, index) => (
           <div key={index} style={{ color: log.isError ? "red" : "black", marginBottom: "5px" }}>
