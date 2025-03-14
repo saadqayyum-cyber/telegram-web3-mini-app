@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ethers } from "ethers";
 import { abi } from "./abis/abi";
 import { useWallet } from "@thirdweb-dev/react";
-import { stringify } from "flatted";
 
 function MintBox() {
   const auth = useWallet();
@@ -14,42 +13,101 @@ function MintBox() {
     setLogs((prevLogs) => [...prevLogs, { message, isError }]);
   };
 
+  const validateSigner = async (signer) => {
+    try {
+      // Check if signer is defined
+      if (!signer) {
+        addLog("Signer is undefined", true);
+        return false;
+      }
+
+      // Check if signer has getAddress method
+      if (typeof signer.getAddress !== "function") {
+        addLog("Signer doesn't have getAddress method", true);
+        return false;
+      }
+
+      // Try to get the address
+      const address = await signer.getAddress();
+      addLog(`Got address: ${address}`);
+
+      // Check if the address is valid
+      if (!ethers.utils.isAddress(address)) {
+        addLog("Invalid Ethereum address", true);
+        return false;
+      }
+
+      // Check if the signer has signMessage method
+      if (typeof signer.signMessage !== "function") {
+        addLog("Signer doesn't have signMessage method", true);
+        return false;
+      }
+
+      // Check if the signer has connect method (required for ethers Signer)
+      if (typeof signer.connect !== "function") {
+        addLog("Signer doesn't have connect method", true);
+        return false;
+      }
+
+      addLog("All validation checks passed!");
+      return true;
+    } catch (error) {
+      console.error("Signer validation error:", error);
+      addLog(`Validation error: ${error.message}`, true);
+      return false;
+    }
+  };
+
   const mint = async () => {
     try {
-      setLoading(true); // Start loading
-      setLogs([]); // Clear previous logs
+      setLoading(true);
+      setLogs([]);
       addLog("Starting Mint process...");
 
-      const thirdwebSigner = await auth.getSigner();
+      // Get signer from ThirdWeb
+      addLog("Getting signer from ThirdWeb...");
+      const signer = await auth.getSigner();
 
-      addLog(`ThirdWeb signer obtained with address: ${await thirdwebSigner.getAddress()}`);
+      // Log signer properties (non-recursive)
+      addLog("Checking signer properties...");
+      const signerKeys = Object.getOwnPropertyNames(signer).filter(
+        (key) => typeof signer[key] !== "object" || signer[key] === null
+      );
+      addLog(`Signer has the following properties: ${signerKeys.join(", ")}`);
 
-      addLog("Getting provider from ThirdWeb signer...");
-      const provider = thirdwebSigner.provider;
+      // Validate the signer
+      addLog("Validating signer...");
+      const isValid = await validateSigner(signer);
 
-      addLog("Creating ethers signer from provider...");
-      const ethersSigner = provider.getSigner();
+      if (!isValid) {
+        addLog("Invalid signer. Please check your wallet connection.", true);
+        setLoading(false);
+        return;
+      }
 
-      addLog(`Ethers signer created with address: ${await ethersSigner.getAddress()}`);
+      const signerAddress = await signer.getAddress();
+      addLog(`Using signer with address: ${signerAddress}`);
 
-      const address = await ethersSigner.getAddress();
-      addLog(`Signer Address: ${address}`);
+      // Create contract with the ThirdWeb signer
+      addLog("Creating contract instance...");
+      const contract = new ethers.Contract(contractAddress, abi, signer);
 
-      addLog(`Using address: ${address}`);
-
-      const contract = new ethers.Contract(contractAddress, abi, ethersSigner);
+      // Execute the mint function
       const amount = ethers.utils.parseUnits("1", 18);
-      const tx = await contract.mint(address, amount);
+      addLog(`Minting to address: ${signerAddress}...`);
+      const tx = await contract.mint(signerAddress, amount);
 
-      addLog(`Mint transaction submitted: ${tx.hash}`);
+      addLog(`Transaction submitted: ${tx.hash}`);
 
       // Wait for confirmation
+      addLog("Waiting for transaction confirmation...");
       await tx.wait();
       addLog("Mint successful!");
     } catch (error) {
+      console.error("Mint error:", error);
       addLog(`Mint failed: ${error.message}`, true);
     } finally {
-      setLoading(false); // Stop loading
+      setLoading(false);
     }
   };
 
@@ -80,7 +138,7 @@ function MintBox() {
           textAlign: "center",
         }}
       >
-        {/* {loading && (
+        {loading && (
           <div
             style={{
               position: "absolute",
@@ -95,10 +153,10 @@ function MintBox() {
           >
             <span>Loading...</span>
           </div>
-        )} */}
+        )}
         <h4>Logs:</h4>
         {logs.map((log, index) => (
-          <div key={index} style={{ color: log.isError ? "red" : "black", marginBottom: "5px" }}>
+          <div key={index} style={{ color: log.isError ? "red" : "black", marginBottom: "5px", textAlign: "left" }}>
             {log.message}
           </div>
         ))}
