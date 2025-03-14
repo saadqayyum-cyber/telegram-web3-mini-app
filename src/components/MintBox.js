@@ -20,6 +20,8 @@ function MintBox() {
       addLog("Starting Mint process...");
 
       const signer = await auth.getSigner();
+      addLog("Signer", signer);
+
       if (!signer) {
         addLog("Signer not found. Connect your wallet first!", true);
         setLoading(false);
@@ -27,6 +29,8 @@ function MintBox() {
       }
 
       const address = await signer.getAddress();
+      addLog("Signer Address", address);
+
       addLog(`Using address: ${address}`);
 
       const contract = new ethers.Contract(contractAddress, abi, signer);
